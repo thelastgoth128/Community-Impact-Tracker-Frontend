@@ -27,7 +27,7 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-blue-600 via-indigo-700 to-purple-800 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 bg-white/95 backdrop-blur-sm p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-blue-500/20">
                 <div className="text-center">
                     <div className="flex justify-center mb-6">
