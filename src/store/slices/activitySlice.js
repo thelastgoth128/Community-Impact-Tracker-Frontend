@@ -5,7 +5,7 @@ export const fetchActivities = createAsyncThunk(
     'activities/fetchAll',
     async (projectId, { rejectWithValue }) => {
         try {
-            const response = await api.get(`/activities/all?projectId=${projectId}`);
+            const response = await api.get(`/activities/all/${projectId}`);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.message);
