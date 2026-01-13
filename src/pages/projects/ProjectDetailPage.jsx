@@ -72,7 +72,7 @@ const ProjectDetailPage = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 text-black">
             <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex justify-between items-start">
                     <div>
