@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProjects, createProject } from '../../store/slices/projectSlice';
+import { fetchProjects, createProject, fetchProjectsByUser } from '../../store/slices/projectSlice';
 import { Link } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import Modal from '../../components/shared/Modal';
 import toast from 'react-hot-toast';
-import { MOCK_PROJECTS } from '../../utils/mockData';
 
 const ProjectsListPage = () => {
     const dispatch = useDispatch();
     const { items, loading } = useSelector((state) => state.projects);
+    const { user, role } = useSelector((state) => state.auth);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         project_name: '',
@@ -19,16 +19,26 @@ const ProjectsListPage = () => {
         end_date: '',
     });
 
-    const displayItems = items.length > 0 ? items : (loading ? [] : MOCK_PROJECTS);
-
     useEffect(() => {
-        dispatch(fetchProjects());
-    }, [dispatch]);
+        // If user is admin, fetch all projects; otherwise fetch only user's projects
+        if (role === 'admin') {
+            dispatch(fetchProjects());
+        } else if (user?.id) {
+            dispatch(fetchProjectsByUser(user.id));
+        }
+    }, [dispatch, role, user?.id]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const userId = user?.id;
+
+        if (!userId) {
+            toast.error('User ID not found. Please log in again.');
+            return;
+        }
+
         try {
-            await dispatch(createProject({ ...formData, userid: 'u1' })).unwrap();
+            await dispatch(createProject({ ...formData, userid: userId })).unwrap();
             toast.success('Project created successfully!');
             setIsModalOpen(false);
         } catch (err) {
@@ -50,7 +60,7 @@ const ProjectsListPage = () => {
             </div>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Project">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 text-black">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
                         <input
@@ -119,7 +129,7 @@ const ProjectsListPage = () => {
                 </form>
             </Modal>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white text-black rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                     <div className="relative w-72">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -146,12 +156,12 @@ const ProjectsListPage = () => {
                             <tr>
                                 <td colSpan="5" className="px-6 py-10 text-center text-gray-500">Loading projects...</td>
                             </tr>
-                        ) : displayItems.length === 0 ? (
+                        ) : items.length === 0 ? (
                             <tr>
                                 <td colSpan="5" className="px-6 py-10 text-center text-gray-500">No projects found.</td>
                             </tr>
                         ) : (
-                            displayItems.map((project) => (
+                            items.map((project) => (
                                 <tr key={project.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-gray-900">{project.project_name}</td>
                                     <td className="px-6 py-4 text-gray-600">{project.sector}</td>
