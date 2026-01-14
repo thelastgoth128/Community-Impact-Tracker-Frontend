@@ -9,6 +9,7 @@ import MemberDashboard from '../pages/dashboard/MemberDashboard';
 import ProjectsListPage from '../pages/projects/ProjectsListPage';
 import ProjectDetailPage from '../pages/projects/ProjectDetailPage';
 import ReportViewerPage from '../pages/reports/ReportViewerPage';
+import UsersPage from '../pages/admin/UsersPage';
 
 export default function AppRoutes() {
     return (
@@ -35,6 +36,11 @@ export default function AppRoutes() {
                 <Route path="projects" element={<ProjectsListPage />} />
                 <Route path="projects/:id" element={<ProjectDetailPage />} />
                 <Route path="reports/:id" element={<ReportViewerPage />} />
+                <Route path="users" element={
+                    <ProtectedRoute roles={['admin', 'manager']}>
+                        <UsersPage />
+                    </ProtectedRoute>
+                } />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
