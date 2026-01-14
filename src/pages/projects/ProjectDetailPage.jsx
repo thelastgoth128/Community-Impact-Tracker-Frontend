@@ -2,17 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchActivities, createActivity } from '../../store/slices/activitySlice';
-import { fetchMetrics } from '../../store/slices/metricSlice';
+import { fetchMetrics, fetchMetricsByActivity, createMetric } from '../../store/slices/metricSlice';
 import { generateReport, fetchReports } from '../../store/slices/reportSlice';
 import { Calendar, MapPin, FileText, Activity, BarChart3, Plus } from 'lucide-react';
 import Modal from '../../components/shared/Modal';
 import toast from 'react-hot-toast';
-import { MOCK_ACTIVITIES, MOCK_PROJECTS, MOCK_REPORTS } from '../../utils/mockData';
+import { fetchProjectsById } from '../../store/slices/projectSlice';
+
 
 const ProjectDetailPage = () => {
     const { id } = useParams();
     const [activeTab, setActiveTab] = useState('activities');
+    const { user, role } = useSelector((state) => state.auth);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isMetricModalOpen, setIsMetricModalOpen] = useState(false);
+    const [selectedActivityId, setSelectedActivityId] = useState(null);
     const [activityForm, setActivityForm] = useState({
         activity_name: '',
         activity_type: '',
@@ -20,15 +24,22 @@ const ProjectDetailPage = () => {
         location: '',
         notes: '',
     });
+    const [metricForm, setMetricForm] = useState({
+        participants_count: '',
+        male_count: '',
+        female_count: '',
+        impact_score: '',
+        outcome_description: ''
+    });
 
     const dispatch = useDispatch();
-    const { items: projects } = useSelector((state) => state.projects);
+    const { items: projects, currentProject, loading: projectLoading, error: projectError } = useSelector((state) => state.projects);
+
     const { items: activities, loading: activitiesLoading } = useSelector((state) => state.activities);
     const { items: metrics, loading: metricsLoading } = useSelector((state) => state.metrics);
     const { items: reports, loading: reportsGenerating } = useSelector((state) => state.reports);
 
-    const project = projects.find((p) => p.id === id) ||
-        MOCK_PROJECTS.find(p => p.id === id) || {
+    const project = projects.find((p) => String(p.id) === id) || currentProject || {
         project_name: 'Project Details',
         description: 'Project data not found.',
         sector: 'Unknown',
@@ -36,19 +47,29 @@ const ProjectDetailPage = () => {
         end_date: new Date(),
     };
 
-    const displayActivities = activities.length > 0 ? activities : (activitiesLoading ? [] : MOCK_ACTIVITIES.filter(a => a.projectid === id));
-    const displayReports = reports.length > 0 ? reports : (reportsGenerating ? [] : MOCK_REPORTS.filter(r => r.projectid === id));
+    console.log("currentproject", currentProject);
+
+    const displayActivities = activities;
+    const displayReports = reports;
+
 
     useEffect(() => {
+        dispatch(fetchProjectsById(id));
         dispatch(fetchActivities(id));
         dispatch(fetchReports(id));
     }, [dispatch, id]);
+
+    useEffect(() => {
+        if (selectedActivityId) {
+            dispatch(fetchMetricsByActivity(selectedActivityId));
+        }
+    }, [dispatch, selectedActivityId]);
 
     const handleGenerateReport = async () => {
         try {
             const data = {
                 projectid: id,
-                generated_by: 'Current User',
+                generated_by: user?.id,
                 created_at: new Date(),
                 summary: `Impact report for ${project.project_name}`,
                 format: 'pdf',
@@ -70,6 +91,47 @@ const ProjectDetailPage = () => {
             toast.error('Failed to add activity');
         }
     };
+
+    const handleCreateMetric = async (e) => {
+        e.preventDefault();
+        if (!selectedActivityId) return toast.error('Please select an activity first');
+
+        try {
+            await dispatch(createMetric({
+                ...metricForm,
+                activityid: selectedActivityId,
+                projectid: id
+            })).unwrap();
+            toast.success('Metric added successfully');
+            setIsMetricModalOpen(false);
+            setMetricForm({
+                participants_count: '',
+                male_count: '',
+                female_count: '',
+                impact_score: '',
+                outcome_description: ''
+            });
+            dispatch(fetchMetricsByActivity(selectedActivityId));
+        } catch (err) {
+            toast.error('Failed to add metric');
+        }
+    };
+
+    if (projectLoading && !currentProject && projects.length === 0) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    if (projectError) {
+        return (
+            <div className="p-8 text-center text-red-600">
+                <p>Error loading project: {typeof projectError === 'object' ? JSON.stringify(projectError) : projectError}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 text-black">
@@ -122,8 +184,8 @@ const ProjectDetailPage = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? 'border-b-2 border-blue-600 text-blue-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'border-b-2 border-blue-600 text-blue-600'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -229,14 +291,154 @@ const ProjectDetailPage = () => {
                     )}
 
                     {activeTab === 'metrics' && (
-                        <div className="py-8 text-center text-gray-500">
-                            Select an activity from the tab above to view its impact metrics.
+                        <div className="space-y-6">
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="w-full md:w-2/3">
+                                    <label className="block text-sm font-medium text-blue-900 mb-2">Select Activity to View Metrics</label>
+                                    <select
+                                        className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-700"
+                                        onChange={(e) => setSelectedActivityId(e.target.value)}
+                                        value={selectedActivityId || ''}
+                                    >
+                                        <option value="">-- Choose an Activity --</option>
+                                        {displayActivities.map(a => <option key={a.id} value={a.id}>{a.activity_name}</option>)}
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (!selectedActivityId) return toast.error('Please select an activity first');
+                                        setIsMetricModalOpen(true);
+                                    }}
+                                    className="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span>Add Metrics</span>
+                                </button>
+                            </div>
+
+                            <Modal isOpen={isMetricModalOpen} onClose={() => setIsMetricModalOpen(false)} title="Add Impact Metrics">
+                                <form onSubmit={handleCreateMetric} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Participants Count</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={metricForm.participants_count}
+                                                onChange={(e) => setMetricForm({ ...metricForm, participants_count: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Impact Score (0-100)</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                min="0"
+                                                max="100"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={metricForm.impact_score}
+                                                onChange={(e) => setMetricForm({ ...metricForm, impact_score: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Male Participants</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={metricForm.male_count}
+                                                onChange={(e) => setMetricForm({ ...metricForm, male_count: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Female Participants</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={metricForm.female_count}
+                                                onChange={(e) => setMetricForm({ ...metricForm, female_count: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Outcome Description</label>
+                                        <textarea
+                                            rows="3"
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={metricForm.outcome_description}
+                                            onChange={(e) => setMetricForm({ ...metricForm, outcome_description: e.target.value })}
+                                            placeholder="Describe the impact and outcome of the activity..."
+                                        ></textarea>
+                                    </div>
+                                    <div className="pt-4">
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                        >
+                                            Save Metrics
+                                        </button>
+                                    </div>
+                                </form>
+                            </Modal>
+
+                            {selectedActivityId && !metricsLoading && metrics.length > 0 && (
+                                <div className="space-y-4">
+                                    {metrics.map((metric) => (
+                                        <div key={metric.id} className="space-y-4">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
+                                                    <p className="text-xs text-gray-500 uppercase font-bold">Participants</p>
+                                                    <p className="text-2xl font-bold text-blue-600">{metric.participants_count}</p>
+                                                </div>
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
+                                                    <p className="text-xs text-gray-500 uppercase font-bold">Male</p>
+                                                    <p className="text-2xl font-bold text-gray-900">{metric.male_count}</p>
+                                                </div>
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
+                                                    <p className="text-xs text-gray-500 uppercase font-bold">Female</p>
+                                                    <p className="text-2xl font-bold text-gray-900">{metric.female_count}</p>
+                                                </div>
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
+                                                    <p className="text-xs text-gray-500 uppercase font-bold">Impact Score</p>
+                                                    <p className="text-2xl font-bold text-emerald-600">{metric.impact_score}<span className="text-sm text-gray-400">/100</span></p>
+                                                </div>
+                                            </div>
+
+                                            {metric.outcome_description && (
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                                                    <h4 className="font-semibold text-gray-900 mb-2">Outcome Description</h4>
+                                                    <p className="text-gray-600">{metric.outcome_description}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {selectedActivityId && !metricsLoading && metrics.length === 0 && (
+                                <div className="py-8 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                    No metrics found for this activity.
+                                </div>
+                            )}
+
+                            {!selectedActivityId && (
+                                <div className="py-12 text-center text-gray-400">
+                                    <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                    <p>Please select an activity above to see the impact data.</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {activeTab === 'reports' && (
                         <div className="space-y-4">
                             <h3 className="text-lg font-semibold mb-4">Generated Reports</h3>
+
                             <div className="grid grid-cols-1 gap-4">
                                 {displayReports.map((report) => (
                                     <div key={report.id} className="p-4 border border-gray-100 rounded-lg flex justify-between items-center hover:bg-gray-50 transition-colors">
