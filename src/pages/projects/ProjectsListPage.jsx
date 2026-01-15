@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProjects, createProject, fetchProjectsByUser } from '../../store/slices/projectSlice';
+import { fetchProjects, createProject, fetchProjectsByUser, deleteProject, updateProject } from '../../store/slices/projectSlice';
 import { Link } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2 } from 'lucide-react';
 import Modal from '../../components/shared/Modal';
 import toast from 'react-hot-toast';
 
@@ -41,8 +41,39 @@ const ProjectsListPage = () => {
             await dispatch(createProject({ ...formData, userid: userId })).unwrap();
             toast.success('Project created successfully!');
             setIsModalOpen(false);
+            
+            setFormData({
+                project_name: '',
+                sector: '',
+                description: '',
+                start_date: '',
+                end_date: '',
+            });
         } catch (err) {
             toast.error('Failed to create project');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this project?')) {
+            try {
+                await dispatch(deleteProject(id)).unwrap();
+                toast.success('Project deleted');
+            } catch (error) {
+                toast.error('Failed to delete project');
+            }
+        }
+    };
+
+    const handleEdit = async (project) => {
+        const newName = window.prompt("Enter new project name:", project.project_name);
+        if (newName && newName !== project.project_name) {
+            try {
+                await dispatch(updateProject({ id: project.id, data: { project_name: newName } })).unwrap();
+                toast.success('Project updated');
+            } catch (error) {
+                toast.error('Failed to update project');
+            }
         }
     };
 
@@ -167,8 +198,14 @@ const ProjectsListPage = () => {
                                     <td className="px-6 py-4 text-gray-600">{project.sector}</td>
                                     <td className="px-6 py-4 text-gray-600">{new Date(project.start_date).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 text-gray-600">{new Date(project.end_date).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 flex items-center space-x-3">
                                         <Link to={`/projects/${project.id}`} className="text-blue-600 hover:text-blue-800 font-medium">View</Link>
+                                        {(role === 'admin' || role === 'manager') && (
+                                            <>
+                                                <button onClick={() => handleEdit(project)} className="text-gray-500 hover:text-blue-600"><Edit2 className="w-4 h-4" /></button>
+                                                <button onClick={() => handleDelete(project.id)} className="text-gray-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))
