@@ -29,7 +29,6 @@ const ProjectDetailPage = () => {
         male_count: '',
         female_count: '',
         impact_score: '',
-        impact_score: '',
         outcome_description: ''
     });
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -53,8 +52,6 @@ const ProjectDetailPage = () => {
         start_date: new Date(),
         end_date: new Date(),
     };
-
-    console.log("currentproject", currentProject);
 
     const displayActivities = activities;
     const displayReports = reports;

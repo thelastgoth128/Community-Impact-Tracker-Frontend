@@ -47,7 +47,6 @@ const PDFViewer = ({ secureUrl, signedUrl, fileName }) => {
             link.click();
             link.parentNode.removeChild(link);
         } catch (err) {
-            console.error('Download error:', err);
             window.open(url, '_blank');
         }
     };
@@ -56,8 +55,8 @@ const PDFViewer = ({ secureUrl, signedUrl, fileName }) => {
         <div className="flex flex-col h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
             {/* Header / Controls */}
             <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 flex items-center truncate max-w-[200px] sm:max-w-md">
-                    <FileText className="w-4 h-4 mr-2 text-blue-600 flex-shrink-0" />
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center truncate max-w-50 sm:max-w-md">
+                    <FileText className="w-4 h-4 mr-2 text-blue-600 shrink-0" />
                     <span className="truncate">{fileName || 'Report Preview'}</span>
                 </h3>
 

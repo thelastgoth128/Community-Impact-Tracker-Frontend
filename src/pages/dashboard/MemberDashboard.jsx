@@ -9,15 +9,9 @@ const MemberDashboard = () => {
     const { user } = useSelector((state) => state.auth);
 
     useEffect(() => {
-        console.log('=== USER INFO ===');
-        console.log('Full user object:', user);
-        console.log('user?.id:', user?.id);
-        console.log('=================');
-
         const userId = user?.id;
 
         if (userId) {
-            console.log('Using user ID:', userId);
             dispatch(fetchProjectsByUser(userId));
         } else {
             console.error('No user ID found in user object!');
@@ -69,12 +63,6 @@ const MemberDashboard = () => {
                         <tbody className="divide-y divide-gray-100">
                             {projects.map((project) => {
                                 const userId = user?.id;
-                                console.log('=== PROJECT ===');
-                                console.log('Project Name:', project.project_name);
-                                console.log('Project userid:', project.userid);
-                                console.log('Logged-in userId:', userId);
-                                console.log('Match:', project.userid === userId);
-                                console.log('===============');
                                 return (
                                     <tr key={project.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900">{project.project_name}</td>
