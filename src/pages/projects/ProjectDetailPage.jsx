@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchActivities, createActivity } from '../../store/slices/activitySlice';
-import { fetchMetrics, fetchMetricsByActivity, createMetric } from '../../store/slices/metricSlice';
-import { generateReport, fetchReports } from '../../store/slices/reportSlice';
-import { Calendar, MapPin, FileText, Activity, BarChart3, Plus } from 'lucide-react';
+import { fetchActivities, createActivity, updateActivity, deleteActivity } from '../../store/slices/activitySlice';
+import { fetchMetrics, fetchMetricsByActivity, createMetric, updateMetric, deleteMetric } from '../../store/slices/metricSlice';
+import { generateReport, fetchReports, deleteReport } from '../../store/slices/reportSlice';
+import { Calendar, MapPin, FileText, Activity, BarChart3, Plus, Trash2, Edit2 } from 'lucide-react';
 import Modal from '../../components/shared/Modal';
 import toast from 'react-hot-toast';
 import { fetchProjectsById } from '../../store/slices/projectSlice';
@@ -29,7 +29,14 @@ const ProjectDetailPage = () => {
         male_count: '',
         female_count: '',
         impact_score: '',
+        impact_score: '',
         outcome_description: ''
+    });
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportForm, setReportForm] = useState({
+        summary: '',
+        conclusions: '',
+        recommendations: ''
     });
 
     const dispatch = useDispatch();
@@ -65,17 +72,30 @@ const ProjectDetailPage = () => {
         }
     }, [dispatch, selectedActivityId]);
 
-    const handleGenerateReport = async () => {
+    const handleGenerateReportStart = () => {
+        setReportForm({
+            summary: `Impact report for ${project.project_name}`,
+            conclusions: '',
+            recommendations: ''
+        });
+        setIsReportModalOpen(true);
+    };
+
+    const handleGenerateReportSubmit = async (e) => {
+        e.preventDefault();
         try {
             const data = {
                 projectid: id,
                 generated_by: user?.id,
                 created_at: new Date(),
-                summary: `Impact report for ${project.project_name}`,
+                summary: reportForm.summary,
+                conclusions: reportForm.conclusions,
+                recommendations: reportForm.recommendations,
                 format: 'pdf',
             };
             await dispatch(generateReport(data)).unwrap();
             toast.success('Report generation started!');
+            setIsReportModalOpen(false);
         } catch (err) {
             toast.error('Failed to generate report');
         }
@@ -117,6 +137,70 @@ const ProjectDetailPage = () => {
         }
     };
 
+    // --- Activity Handlers ---
+    const handleEditActivity = async (activity) => {
+        const newName = window.prompt("Enter new activity name:", activity.activity_name);
+        if (newName && newName !== activity.activity_name) {
+            try {
+                await dispatch(updateActivity({ id: activity.id, data: { activity_name: newName } })).unwrap();
+                toast.success('Activity updated');
+            } catch (error) {
+                toast.error('Failed to update activity');
+            }
+        }
+    };
+
+    const handleDeleteActivity = async (activityId) => {
+        if (window.confirm('Are you sure you want to delete this activity?')) {
+            try {
+                await dispatch(deleteActivity(activityId)).unwrap();
+                toast.success('Activity deleted');
+            } catch (error) {
+                toast.error('Failed to delete activity');
+            }
+        }
+    };
+
+    // --- Metric Handlers ---
+    const handleDeleteMetric = async (metricId) => {
+        if (window.confirm('Are you sure you want to delete this metric?')) {
+            try {
+                await dispatch(deleteMetric(metricId)).unwrap();
+                toast.success('Metric deleted');
+                // Refresh metrics for current activity
+                if (selectedActivityId) dispatch(fetchMetricsByActivity(selectedActivityId));
+            } catch (error) {
+                toast.error('Failed to delete metric');
+            }
+        }
+    };
+
+    const handleEditMetric = async (metric) => {
+        const newScore = window.prompt("Enter new Impact Score:", metric.impact_score);
+        if (newScore && newScore !== String(metric.impact_score)) {
+            try {
+                await dispatch(updateMetric({ id: metric.id, data: { impact_score: newScore } })).unwrap();
+                toast.success('Metric updated');
+                if (selectedActivityId) dispatch(fetchMetricsByActivity(selectedActivityId));
+            } catch (error) {
+                toast.error('Failed to update metric');
+            }
+        }
+    };
+
+
+    // --- Report Handlers ---
+    const handleDeleteReport = async (reportId) => {
+        if (window.confirm('Are you sure you want to delete this report?')) {
+            try {
+                await dispatch(deleteReport(reportId)).unwrap();
+                toast.success('Report deleted');
+            } catch (error) {
+                toast.error('Failed to delete report');
+            }
+        }
+    };
+
     if (projectLoading && !currentProject && projects.length === 0) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -142,13 +226,58 @@ const ProjectDetailPage = () => {
                         <p className="text-gray-500 mt-2 max-w-2xl">{project.description}</p>
                     </div>
                     <button
-                        onClick={handleGenerateReport}
+                        onClick={handleGenerateReportStart}
                         disabled={reportsGenerating}
                         className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center space-x-2 disabled:opacity-50"
                     >
                         <FileText className="w-5 h-5" />
                         <span>{reportsGenerating ? 'Generating...' : 'Generate Report'}</span>
                     </button>
+
+                    <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Generate Impact Report">
+                        <form onSubmit={handleGenerateReportSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Executive Summary</label>
+                                <textarea
+                                    rows="3"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={reportForm.summary}
+                                    onChange={(e) => setReportForm({ ...reportForm, summary: e.target.value })}
+                                ></textarea>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Conclusions</label>
+                                <textarea
+                                    rows="3"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={reportForm.conclusions}
+                                    onChange={(e) => setReportForm({ ...reportForm, conclusions: e.target.value })}
+                                    placeholder="Enter report conclusions..."
+                                ></textarea>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Recommendations</label>
+                                <textarea
+                                    rows="3"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={reportForm.recommendations}
+                                    onChange={(e) => setReportForm({ ...reportForm, recommendations: e.target.value })}
+                                    placeholder="Enter recommendations..."
+                                ></textarea>
+                            </div>
+                            <div className="pt-4">
+                                <button
+                                    type="submit"
+                                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                >
+                                    Generate PDF
+                                </button>
+                            </div>
+                        </form>
+                    </Modal>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-8 border-t border-gray-50">
@@ -279,9 +408,17 @@ const ProjectDetailPage = () => {
                                             <p className="font-medium text-gray-900">{activity.activity_name}</p>
                                             <p className="text-sm text-gray-500">{activity.activity_type} • {new Date(activity.date).toLocaleDateString()}</p>
                                         </div>
-                                        <div className="flex items-center space-x-2 text-sm text-gray-400">
-                                            <MapPin className="w-4 h-4" />
-                                            <span>{activity.location}</span>
+                                        <div className="flex items-center space-x-4">
+                                            <div className="flex items-center space-x-2 text-sm text-gray-400">
+                                                <MapPin className="w-4 h-4" />
+                                                <span>{activity.location}</span>
+                                            </div>
+                                            {(role === 'admin' || role === 'manager') && (
+                                                <div className="flex items-center space-x-2">
+                                                    <button onClick={() => handleEditActivity(activity)} className="text-gray-400 hover:text-blue-600"><Edit2 className="w-4 h-4" /></button>
+                                                    <button onClick={() => handleDeleteActivity(activity.id)} className="text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                                </div>
+                                            )}
                                         </div>
                                     </li>
                                 ))}
@@ -391,9 +528,14 @@ const ProjectDetailPage = () => {
                                     {metrics.map((metric) => (
                                         <div key={metric.id} className="space-y-4">
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center relative group">
                                                     <p className="text-xs text-gray-500 uppercase font-bold">Participants</p>
                                                     <p className="text-2xl font-bold text-blue-600">{metric.participants_count}</p>
+                                                    {(role === 'admin' || role === 'manager') && (
+                                                        <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => handleDeleteMetric(metric.id)} className="text-gray-300 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
                                                     <p className="text-xs text-gray-500 uppercase font-bold">Male</p>
@@ -403,9 +545,14 @@ const ProjectDetailPage = () => {
                                                     <p className="text-xs text-gray-500 uppercase font-bold">Female</p>
                                                     <p className="text-2xl font-bold text-gray-900">{metric.female_count}</p>
                                                 </div>
-                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center">
+                                                <div className="p-4 border border-gray-200 rounded-lg bg-white text-center relative group">
                                                     <p className="text-xs text-gray-500 uppercase font-bold">Impact Score</p>
                                                     <p className="text-2xl font-bold text-emerald-600">{metric.impact_score}<span className="text-sm text-gray-400">/100</span></p>
+                                                    {(role === 'admin' || role === 'manager') && (
+                                                        <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => handleEditMetric(metric)} className="text-gray-300 hover:text-blue-600"><Edit2 className="w-3 h-3" /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -457,6 +604,11 @@ const ProjectDetailPage = () => {
                                         >
                                             View Report
                                         </Link>
+                                        {(role === 'admin' || role === 'manager') && (
+                                            <button onClick={() => handleDeleteReport(report.id)} className="ml-4 text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-full">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                                 {displayReports.length === 0 && <div className="py-8 text-center text-gray-500">No reports generated yet.</div>}
