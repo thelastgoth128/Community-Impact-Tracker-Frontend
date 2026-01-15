@@ -149,7 +149,7 @@ const ReportViewerPage = () => {
                     <PDFViewer
                         secureUrl={report.fileUrl}
                         signedUrl={report.signedUrl}
-                        fileName={`Report_${id.slice(-6)}.pdf`}
+                        fileName={`${report.project?.data?.project_name || report.project?.project_name || 'Project'}_Impact_Report.pdf`}
                     />
                 </div>
 
