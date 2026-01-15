@@ -1,16 +1,26 @@
-import React, { useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import PDFViewer from '../../components/shared/PDFViewer';
-import { ArrowLeft, Clock, User as UserIcon, Calendar } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchReportById, updateReport } from '../../store/slices/reportSlice';
 import { fetchUserById } from '../../store/slices/userSlice';
-import { fetchReportById, setCurrentReport } from '../../store/slices/reportSlice';
+import { Calendar, User as UserIcon, FileText, ArrowLeft, Download, Eye, Edit2, Clock } from 'lucide-react';
+import PDFViewer from '../../components/shared/PDFViewer';
+import Modal from '../../components/shared/Modal';
+import toast from 'react-hot-toast';
 
 const ReportViewerPage = () => {
     const { id } = useParams();
     const { items: reports, currentReport, loading: reportLoading } = useSelector((state) => state.reports);
     const { user: reportUser } = useSelector((state) => state.users);
+    const { role } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editForm, setEditForm] = useState({
+        summary: '',
+        conclusions: '',
+        recommendations: ''
+    });
 
     const report = reports.find((r) => r.id === id) || (currentReport?.id === id ? currentReport : null);
 
@@ -24,7 +34,27 @@ const ReportViewerPage = () => {
         if (report?.generated_by) {
             dispatch(fetchUserById(report.generated_by));
         }
-    }, [dispatch, report?.generated_by]); 
+    }, [dispatch, report?.generated_by]);
+
+    const handleEditStart = () => {
+        setEditForm({
+            summary: report.summary || '',
+            conclusions: report.conclusions || '',
+            recommendations: report.recommendations || ''
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            await dispatch(updateReport({ id: report.id, data: editForm })).unwrap();
+            toast.success('Report updated and regenerating...');
+            setIsEditModalOpen(false);
+        } catch (error) {
+            toast.error('Failed to update report');
+        }
+    };
     if (reportLoading && !report) {
         return <div className="flex justify-center py-20">Loading report...</div>;
     }
@@ -50,7 +80,69 @@ const ReportViewerPage = () => {
                         <p className="text-sm text-gray-500">Project Impact Assessment</p>
                     </div>
                 </div>
+                <div className="flex gap-3">
+                    {(role === 'admin' || role === 'manager') && (
+                        <button
+                            onClick={handleEditStart}
+                            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                        >
+                            <Edit2 className="w-4 h-4" />
+                            <span>Edit</span>
+                        </button>
+                    )}
+                </div>
             </div>
+
+            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Report Details">
+                <form onSubmit={handleUpdate} className="space-y-4 text-black">
+                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-sm text-yellow-800 mb-4">
+                        Note: Updating these fields will regenerate the PDF file.
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Executive Summary</label>
+                        <textarea
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={editForm.summary}
+                            onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
+                        ></textarea>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Conclusions</label>
+                        <textarea
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={editForm.conclusions}
+                            onChange={(e) => setEditForm({ ...editForm, conclusions: e.target.value })}
+                        ></textarea>
+                    </div>
+                    <div>
+                        <label className="block  text-sm font-medium text-gray-700 mb-1">Recommendations</label>
+                        <textarea
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={editForm.recommendations}
+                            onChange={(e) => setEditForm({ ...editForm, recommendations: e.target.value })}
+                        ></textarea>
+                    </div>
+                    <div className="pt-4">
+                        <button
+                            type="submit"
+                            disabled={reportLoading}
+                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                        >
+                            {reportLoading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                    Regenerating...
+                                </>
+                            ) : (
+                                'Update & Regenerate'
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
 
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
                 <div className="lg:col-span-3 h-full">
@@ -95,6 +187,24 @@ const ReportViewerPage = () => {
                             {report.summary}
                         </p>
                     </div>
+
+                    {report.conclusions && (
+                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Conclusions</h3>
+                            <p className="text-sm text-gray-700 leading-relaxed">
+                                {report.conclusions}
+                            </p>
+                        </div>
+                    )}
+
+                    {report.recommendations && (
+                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Recommendations</h3>
+                            <p className="text-sm text-gray-700 leading-relaxed">
+                                {report.recommendations}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
