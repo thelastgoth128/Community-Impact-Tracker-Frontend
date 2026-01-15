@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchActivities, createActivity, updateActivity, deleteActivity } from '../../store/slices/activitySlice';
 import { fetchMetrics, fetchMetricsByActivity, createMetric, updateMetric, deleteMetric } from '../../store/slices/metricSlice';
 import { generateReport, fetchReports, deleteReport } from '../../store/slices/reportSlice';
-import { Calendar, MapPin, FileText, Activity, BarChart3, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Calendar, MapPin, FileText, Activity, BarChart3, Plus, Trash2, Edit2, Loader } from 'lucide-react';
 import Modal from '../../components/shared/Modal';
 import toast from 'react-hot-toast';
 import { fetchProjectsById } from '../../store/slices/projectSlice';
@@ -268,9 +268,17 @@ const ProjectDetailPage = () => {
                             <div className="pt-4">
                                 <button
                                     type="submit"
-                                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                    disabled={reportsGenerating}
+                                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Generate PDF
+                                    {reportsGenerating ? (
+                                        <>
+                                            <Loader className="w-5 h-5 animate-spin" />
+                                            <span>Generating...</span>
+                                        </>
+                                    ) : (
+                                        <span>Generate PDF</span>
+                                    )}
                                 </button>
                             </div>
                         </form>
@@ -591,7 +599,7 @@ const ProjectDetailPage = () => {
                                                 <FileText className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-900">Report #{report.id.slice(-6)}</p>
+                                                <p className="font-medium text-gray-900">{project.project_name} Impact Report</p>
                                                 <p className="text-xs text-gray-500">Generated on {new Date(report.created_at).toLocaleString()}</p>
                                             </div>
                                         </div>
