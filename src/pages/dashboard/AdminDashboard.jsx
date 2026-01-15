@@ -14,6 +14,7 @@ const AdminDashboard = () => {
     const { items: users } = useSelector((state) => state.users);
     const { items: reports } = useSelector((state) => state.reports);
     const { items: activities } = useSelector((state) => state.activities);
+    const { items: metrics } = useSelector((state) => state.metrics);
 
     useEffect(() => {
         dispatch(fetchProjects());
@@ -31,6 +32,14 @@ const AdminDashboard = () => {
         { label: 'Activities', value: activities.length, color: 'bg-purple-500', icon: Activity },
     ];
 
+    
+    const totalParticipants = metrics.reduce((sum, m) => sum + (Number(m.participants_count) || 0), 0);
+    const totalMale = metrics.reduce((sum, m) => sum + (Number(m.male_count) || 0), 0);
+    const totalFemale = metrics.reduce((sum, m) => sum + (Number(m.female_count) || 0), 0);
+    const avgImpact = metrics.length > 0
+        ? (metrics.reduce((sum, m) => sum + (Number(m.impact_score) || 0), 0) / metrics.length).toFixed(1)
+        : '0.0';
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -47,6 +56,29 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 ))}
+            </div>
+
+            
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900 mb-6">Overall Ecosystem Impact</h2>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="p-4 bg-gray-50 rounded-lg text-center border border-gray-200">
+                        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Participants</p>
+                        <p className="text-3xl font-bold text-blue-600 mt-2">{totalParticipants.toLocaleString()}</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg text-center border border-gray-200">
+                        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Male</p>
+                        <p className="text-3xl font-bold text-gray-800 mt-2">{totalMale.toLocaleString()}</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg text-center border border-gray-200">
+                        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Female</p>
+                        <p className="text-3xl font-bold text-gray-800 mt-2">{totalFemale.toLocaleString()}</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg text-center border border-gray-200">
+                        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Avg Impact Score</p>
+                        <p className="text-3xl font-bold text-emerald-600 mt-2">{avgImpact}<span className="text-sm text-gray-400 font-normal">/100</span></p>
+                    </div>
+                </div>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
