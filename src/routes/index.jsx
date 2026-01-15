@@ -10,6 +10,7 @@ import ProjectsListPage from '../pages/projects/ProjectsListPage';
 import ProjectDetailPage from '../pages/projects/ProjectDetailPage';
 import ReportViewerPage from '../pages/reports/ReportViewerPage';
 import UsersPage from '../pages/admin/UsersPage';
+import ReportsListPage from '../pages/reports/ReportsListPage';
 
 export default function AppRoutes() {
     return (
@@ -35,6 +36,7 @@ export default function AppRoutes() {
 
                 <Route path="projects" element={<ProjectsListPage />} />
                 <Route path="projects/:id" element={<ProjectDetailPage />} />
+                <Route path="reports" element={<ReportsListPage />} />
                 <Route path="reports/:id" element={<ReportViewerPage />} />
                 <Route path="users" element={
                     <ProtectedRoute roles={['admin', 'manager']}>
