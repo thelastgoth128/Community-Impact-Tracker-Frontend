@@ -1,11 +1,15 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProjectsByUser } from '../../store/slices/projectSlice';
+import { fetchAllActivities } from '../../store/slices/activitySlice';
+import { fetchAllReports } from '../../store/slices/reportSlice';
 import { Link } from 'react-router-dom';
 
 const MemberDashboard = () => {
     const dispatch = useDispatch();
     const { items: projects, loading } = useSelector((state) => state.projects);
+    const { items: activities } = useSelector((state) => state.activities);
+    const { items: reports } = useSelector((state) => state.reports);
     const { user } = useSelector((state) => state.auth);
 
     useEffect(() => {
@@ -13,10 +17,16 @@ const MemberDashboard = () => {
 
         if (userId) {
             dispatch(fetchProjectsByUser(userId));
+            dispatch(fetchAllActivities());
+            dispatch(fetchAllReports());
         } else {
             console.error('No user ID found in user object!');
         }
     }, [dispatch, user]);
+
+    // Filter data for the current user
+    const userActivitiesCount = activities.filter(a => a.userid === user?.id).length;
+    const userReportsCount = reports.filter(r => r.generated_by === user?.id).length;
 
     return (
         <div className="space-y-6">
@@ -29,11 +39,11 @@ const MemberDashboard = () => {
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <p className="text-sm font-medium text-gray-500">Activities Done</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">-</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{userActivitiesCount}</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <p className="text-sm font-medium text-gray-500">Reports Ready</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">-</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{userReportsCount}</p>
                 </div>
             </div>
 
