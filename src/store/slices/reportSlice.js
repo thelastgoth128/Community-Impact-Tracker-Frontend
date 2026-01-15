@@ -49,6 +49,18 @@ export const generateReport = createAsyncThunk(
     }
 );
 
+export const updateReport = createAsyncThunk(
+    'reports/update',
+    async ({ id, data }, { rejectWithValue }) => {
+        try {
+            const response = await api.patch(`/reports/${id}`, data);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
 
 export const deleteReport = createAsyncThunk(
     'reports/delete',
@@ -126,6 +138,21 @@ const reportSlice = createSlice({
                 state.currentReport = action.payload;
             })
             .addCase(generateReport.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            .addCase(updateReport.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(updateReport.fulfilled, (state, action) => {
+                state.loading = false;
+                const index = state.items.findIndex(i => i.id === action.payload.id);
+                if (index !== -1) {
+                    state.items[index] = action.payload;
+                }
+                state.currentReport = action.payload;
+            })
+            .addCase(updateReport.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })
