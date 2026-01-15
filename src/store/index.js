@@ -4,6 +4,7 @@ import projectReducer from './slices/projectSlice';
 import activityReducer from './slices/activitySlice';
 import metricReducer from './slices/metricSlice';
 import reportReducer from './slices/reportSlice';
+import userReducer from './slices/userSlice';
 
 export const store = configureStore({
     reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
         activities: activityReducer,
         metrics: metricReducer,
         reports: reportReducer,
+        users: userReducer,
     },
 });
