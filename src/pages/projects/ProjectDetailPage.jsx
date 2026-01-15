@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchActivities, createActivity, updateActivity, deleteActivity } from '../../store/slices/activitySlice';
 import { fetchMetrics, fetchMetricsByActivity, createMetric, updateMetric, deleteMetric } from '../../store/slices/metricSlice';
 import { generateReport, fetchReports, deleteReport } from '../../store/slices/reportSlice';
-import { Calendar, MapPin, FileText, Activity, BarChart3, Plus, Trash2, Edit2, Loader } from 'lucide-react';
+import { fetchDonors, createDonor, updateDonor, deleteDonor } from '../../store/slices/donorSlice';
+import { Calendar, MapPin, FileText, Activity, BarChart3, Plus, Trash2, Edit2, Loader, Users, Handshake } from 'lucide-react';
 import Modal from '../../components/shared/Modal';
 import toast from 'react-hot-toast';
 import { fetchProjectsById } from '../../store/slices/projectSlice';
@@ -38,12 +39,23 @@ const ProjectDetailPage = () => {
         recommendations: ''
     });
 
+    const [isDonorModalOpen, setIsDonorModalOpen] = useState(false);
+    const [editingDonor, setEditingDonor] = useState(null);
+    const [donorForm, setDonorForm] = useState({
+        name: '',
+        organization: '',
+        email: ''
+    });
+
     const dispatch = useDispatch();
     const { items: projects, currentProject, loading: projectLoading, error: projectError } = useSelector((state) => state.projects);
 
     const { items: activities, loading: activitiesLoading } = useSelector((state) => state.activities);
     const { items: metrics, loading: metricsLoading } = useSelector((state) => state.metrics);
     const { items: reports, loading: reportsGenerating } = useSelector((state) => state.reports);
+    const { items: allDonors, loading: donorsLoading } = useSelector((state) => state.donors);
+
+    const projectDonors = allDonors.filter(d => d.associated_projects?.includes(id));
 
     const project = projects.find((p) => String(p.id) === id) || currentProject || {
         project_name: 'Project Details',
@@ -61,6 +73,7 @@ const ProjectDetailPage = () => {
         dispatch(fetchProjectsById(id));
         dispatch(fetchActivities(id));
         dispatch(fetchReports(id));
+        dispatch(fetchDonors());
     }, [dispatch, id]);
 
     useEffect(() => {
@@ -101,7 +114,7 @@ const ProjectDetailPage = () => {
     const handleCreateActivity = async (e) => {
         e.preventDefault();
         try {
-            await dispatch(createActivity({ ...activityForm, projectid: id })).unwrap();
+            await dispatch(createActivity({ ...activityForm, projectid: id, userid: user?.id })).unwrap();
             toast.success('Activity added successfully!');
             setIsModalOpen(false);
         } catch (err) {
@@ -194,6 +207,52 @@ const ProjectDetailPage = () => {
                 toast.success('Report deleted');
             } catch (error) {
                 toast.error('Failed to delete report');
+            }
+        }
+    };
+
+    // --- Donor Handlers ---
+    const handleDonorSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingDonor) {
+                await dispatch(updateDonor({
+                    id: editingDonor.id,
+                    data: donorForm
+                })).unwrap();
+                toast.success('Donor updated successfully');
+            } else {
+                await dispatch(createDonor({
+                    ...donorForm,
+                    associated_projects: [id]
+                })).unwrap();
+                toast.success('Donor added successfully');
+            }
+            setIsDonorModalOpen(false);
+            setEditingDonor(null);
+            setDonorForm({ name: '', organization: '', email: '' });
+        } catch (error) {
+            toast.error(editingDonor ? 'Failed to update donor' : 'Failed to add donor');
+        }
+    };
+
+    const handleEditDonor = (donor) => {
+        setEditingDonor(donor);
+        setDonorForm({
+            name: donor.name,
+            organization: donor.organization,
+            email: donor.email
+        });
+        setIsDonorModalOpen(true);
+    };
+
+    const handleDeleteDonor = async (donorId) => {
+        if (window.confirm('Are you sure you want to delete this donor?')) {
+            try {
+                await dispatch(deleteDonor(donorId)).unwrap();
+                toast.success('Donor removed');
+            } catch (error) {
+                toast.error('Failed to remove donor');
             }
         }
     };
@@ -313,6 +372,7 @@ const ProjectDetailPage = () => {
                         { id: 'activities', label: 'Activities', icon: Activity },
                         { id: 'metrics', label: 'Impact Metrics', icon: BarChart3 },
                         { id: 'reports', label: 'Reports', icon: FileText },
+                        { id: 'donors', label: 'Donors', icon: Handshake },
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -398,9 +458,17 @@ const ProjectDetailPage = () => {
                                     <div className="pt-4">
                                         <button
                                             type="submit"
-                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                            disabled={activitiesLoading}
+                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Save Activity
+                                            {activitiesLoading ? (
+                                                <>
+                                                    <Loader className="w-5 h-5 animate-spin" />
+                                                    <span>Saving Activity...</span>
+                                                </>
+                                            ) : (
+                                                <span>Save Activity</span>
+                                            )}
                                         </button>
                                     </div>
                                 </form>
@@ -520,9 +588,17 @@ const ProjectDetailPage = () => {
                                     <div className="pt-4">
                                         <button
                                             type="submit"
-                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                            disabled={metricsLoading}
+                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Save Metrics
+                                            {metricsLoading ? (
+                                                <>
+                                                    <Loader className="w-5 h-5 animate-spin" />
+                                                    <span>Saving Metrics...</span>
+                                                </>
+                                            ) : (
+                                                <span>Save Metrics</span>
+                                            )}
                                         </button>
                                     </div>
                                 </form>
@@ -617,6 +693,120 @@ const ProjectDetailPage = () => {
                                     </div>
                                 ))}
                                 {displayReports.length === 0 && <div className="py-8 text-center text-gray-500">No reports generated yet.</div>}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'donors' && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold">Project Donors</h3>
+                                {(role === 'admin' || role === 'manager') && (
+                                    <button
+                                        onClick={() => {
+                                            setEditingDonor(null);
+                                            setDonorForm({ name: '', organization: '', email: '' });
+                                            setIsDonorModalOpen(true);
+                                        }}
+                                        className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span>Add Donor</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <Modal
+                                isOpen={isDonorModalOpen}
+                                onClose={() => setIsDonorModalOpen(false)}
+                                title={editingDonor ? "Edit Donor" : "Add New Donor"}
+                            >
+                                <form onSubmit={handleDonorSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Donor Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={donorForm.name}
+                                            onChange={(e) => setDonorForm({ ...donorForm, name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={donorForm.organization}
+                                            onChange={(e) => setDonorForm({ ...donorForm, organization: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                        <input
+                                            type="email"
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={donorForm.email}
+                                            onChange={(e) => setDonorForm({ ...donorForm, email: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="pt-4">
+                                        <button
+                                            type="submit"
+                                            disabled={donorsLoading}
+                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {donorsLoading ? (
+                                                <>
+                                                    <Loader className="w-5 h-5 animate-spin" />
+                                                    <span>{editingDonor ? 'Updating...' : 'Saving...'}</span>
+                                                </>
+                                            ) : (
+                                                <span>{editingDonor ? 'Update Donor' : 'Save Donor'}</span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </Modal>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {projectDonors.map((donor) => (
+                                    <div key={donor.id} className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors flex justify-between items-start">
+                                        <div className="flex items-start space-x-3">
+                                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                                <Users className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-900">{donor.name}</p>
+                                                <p className="text-sm text-gray-600">{donor.organization}</p>
+                                                <p className="text-xs text-gray-400 mt-1">{donor.email}</p>
+                                            </div>
+                                        </div>
+                                        {(role === 'admin' || role === 'manager') && (
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => handleEditDonor(donor)}
+                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteDonor(donor.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {projectDonors.length === 0 && (
+                                    <div className="col-span-full py-8 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                        No donors associated with this project yet.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
