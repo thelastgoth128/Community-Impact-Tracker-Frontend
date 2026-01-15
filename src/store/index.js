@@ -5,6 +5,7 @@ import activityReducer from './slices/activitySlice';
 import metricReducer from './slices/metricSlice';
 import reportReducer from './slices/reportSlice';
 import userReducer from './slices/userSlice';
+import donorReducer from './slices/donorSlice';
 
 export const store = configureStore({
     reducer: {
@@ -14,5 +15,6 @@ export const store = configureStore({
         metrics: metricReducer,
         reports: reportReducer,
         users: userReducer,
+        donors: donorReducer,
     },
 });
