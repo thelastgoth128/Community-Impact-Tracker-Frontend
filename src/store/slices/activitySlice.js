@@ -94,17 +94,44 @@ const activitySlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+            .addCase(createActivity.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(createActivity.fulfilled, (state, action) => {
+                state.loading = false;
                 state.items.push(action.payload);
             })
+            .addCase(createActivity.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            .addCase(updateActivity.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(updateActivity.fulfilled, (state, action) => {
+                state.loading = false;
                 const index = state.items.findIndex(a => a.id === action.payload.id);
                 if (index !== -1) {
                     state.items[index] = { ...state.items[index], ...action.payload };
                 }
             })
+            .addCase(updateActivity.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            .addCase(deleteActivity.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(deleteActivity.fulfilled, (state, action) => {
+                state.loading = false;
                 state.items = state.items.filter(a => a.id !== action.payload);
+            })
+            .addCase(deleteActivity.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             });
     },
 });

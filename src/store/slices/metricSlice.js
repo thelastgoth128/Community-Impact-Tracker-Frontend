@@ -105,8 +105,17 @@ const metricSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+            .addCase(createMetric.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(createMetric.fulfilled, (state, action) => {
+                state.loading = false;
                 state.items.push(action.payload);
+            })
+            .addCase(createMetric.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             })
             .addCase(fetchMetricsByActivity.pending, (state) => {
                 state.loading = true;
@@ -119,14 +128,32 @@ const metricSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+            .addCase(updateMetric.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(updateMetric.fulfilled, (state, action) => {
+                state.loading = false;
                 const index = state.items.findIndex(m => m.id === action.payload.id);
                 if (index !== -1) {
                     state.items[index] = { ...state.items[index], ...action.payload };
                 }
             })
+            .addCase(updateMetric.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            .addCase(deleteMetric.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(deleteMetric.fulfilled, (state, action) => {
+                state.loading = false;
                 state.items = state.items.filter(m => m.id !== action.payload);
+            })
+            .addCase(deleteMetric.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             });
     },
 });
